@@ -1,0 +1,58 @@
+#!/bin/bash
+
+FIND_ALL=
+
+while :
+do
+	case $1 in
+	-a)
+		FIND_ALL=TRUE
+		;;
+	*)
+		break
+		;;
+	esac
+	shift
+done
+
+SEARCHPATH=`echo $PATH | sed -e 's/^:/.:/' -e 's/::/:.:/g' -e 's/:$/:./' -e 's/:/ /g'`
+
+for FILE
+do
+	FOUND=
+	case "$FILE" in
+	*/*)
+		if [ -f "$FILE" -a -x "$FILE" ]
+		then
+		FOUND="$FILE"
+		fi
+		;;
+	*)
+		for P in $SEARCHPATH
+		do
+			if [ -f "$P/$FILE" -a -x "$P/$FILE" ]
+			then
+				if [ ! "$FOUND" ]
+				then
+					FOUND="$P/$FILE"
+				else
+					FOUND="$FOUND
+					$P/$FILE"
+				fi
+
+			if [ ! "$FIND_ALL" ]
+			then
+				FOUND="$P/$FILE"
+				break
+			fi
+			fi
+		done
+		;;
+		esac
+		if [ "$FOUND" ]
+		then
+			echo "$FOUND"
+		else
+			echo "$FILE not FOUND"
+		fi
+done

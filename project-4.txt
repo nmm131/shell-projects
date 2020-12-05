@@ -1,0 +1,59 @@
+#!/bin/bash
+
+MAXCAP=90
+CAPACITY=60
+
+while [ $# -gt 0 ]
+do
+	case $1 in 
+    -m)
+		MAXCAP=${2?"Must specify maximum capacity with -m"}
+        shift 2
+        ;;
+    -c)
+        CAPACITY=${2?"Must specify capacity with -c"}
+        shift 2
+        ;;
+    *)
+        break
+        ;;
+    esac
+done
+
+EMAIL="$@"
+
+if [ ! "$EMAIL" ]
+then
+	echo No mail accounts specified
+	exit 1
+fi
+
+DF="df -h -t ext4 -t nfs -t ext2"
+HEADER=$($DF | sed -n '1p')
+#echo $HEADER
+OIFS=$IFS
+
+$DF |sed '1d' | while read line
+do
+	set -- $line
+	FS=$6
+	IFS=%
+	set $5
+	USED=$1
+	IFS=$OIFS
+
+	if [ $USED -ge $CAPACITY ]
+	then
+		if [ $USED -lt $MAXCAP ]
+		then
+			SUBJECT="WARNING"
+		else
+			SUBJECT="CRITICAL WARNING"
+	    fi
+		mailx -s "$SUBJECT: the file system $FS is above $CAPACITY% " $EMAIL <<-END
+$SUBJECT: the file system $FS is above $CAPACITY%
+$HEADER
+	$line
+END
+	fi
+done

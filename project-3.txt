@@ -1,0 +1,179 @@
+#!/usr/bin/bash
+# initialize help or tooltip message
+USAGE="$0 -f directory
+$0 -d  directory
+$0 -d -f directory
+
+-f rename files
+-d rename directories
+"
+
+usage ()
+    {
+        # display help or tooltip message and exit
+    echo "$USAGE"
+    exit 1
+    }
+
+pathname ()
+    {
+    # pathname, or directory name, of directory or file
+    echo "${1%/*}"
+    }
+
+basename ()
+    {
+    # basename, or file root, of directory or file
+        # it is the end of the pathname
+    echo "${1##*/}"
+    }
+
+find_dirs ()
+    {
+    # find all sub-directories and root directory
+    find "$1" -depth -type d -name '* *'
+    }
+
+find_files ()
+    {
+    # find all sub-files
+    find "$1" -depth -type f -name '* *'
+    }
+
+my_rename()
+        {
+        # check if directory is writable
+        if [ ! -w "$1" ]
+                then #directory is not writable
+                        # report an error and exit
+                        echo "The directory specified is not writable."
+                        exit 1
+        fi
+        # check if my_rename was passed more than one directory to rename
+        if [ ! -z "$3" ]
+                then # an extra directory was passed
+                        # report an error and exit
+                        echo "An extra directory was specified."
+                        exit 1
+        else # no extra directory was passed
+                        #rename $1 to $2
+                        mv "$1" "$2" 2>&1
+        fi
+        }
+
+fix_dirs ()
+    {
+        # call find_dirs to get list of all directories to
+        # iterate through, includes all sub-directories and root directory
+    find_dirs "$1" | while read DIR1
+        do
+        COUNTER=$(echo "$DIR1" | grep -c "/");
+        if [ $COUNTER -ne 0 ]
+                then # directory is sub-directory
+                        # replace spaces with "-" and save to variable
+            DIR2=$(pathname "$DIR1")/$(basename "$DIR1" | tr " " "-")
+        else # observed directory is root
+                        # replace spaces with "-" and save to variable
+            DIR2=$(echo "$DIR1" | tr " " "-")
+        fi
+                # call my_rename to rename DIR1 to DIR2
+        my_rename "${DIR1}" "${DIR2}"
+    done
+    }
+
+fix_files ()
+        {
+        # call find_files to get list of all files to
+        # iterate through, includes all sub-files
+        find_files "$1" | while read FILE1
+        do
+                # replace spaces with "-" and save to variable
+                FILE2=$(pathname "$FILE1")/$(basename "$FILE1" | tr " " "-")
+                # call my_rename to rename FILE1 to FILE2
+                my_rename "${FILE1}" "${FILE2}"
+        done
+        }
+
+WFILE=
+WDIR=
+DIR=
+
+# display command help/usage if 0 arguments
+if [ "$#" -eq 0 ]
+   then
+   usage
+   fi
+# if 1 or more arguments
+while [ $# -gt 0 ]
+    do
+        # set a -d or -f flag
+    case $1 in
+    -d) # write directory names
+        WDIR=1
+        ;;
+    -f) # write filenames
+        WFILE=1
+        ;;
+    -*) # display command help/usage if flag not set
+        usage
+        ;;
+    *) # check if directory exists
+        if [ -d "$1" ]
+            then #directory exists
+            DIR="$1"
+        else #directory does not exist
+            echo "$1 does not exist ..."
+            exit 1
+            fi
+        ;;
+    esac
+    shift       # throw away this argument
+    done
+
+# check if the directory was not specified
+if [ -z "$DIR" ]
+        then
+                # the directory was not specified
+                # print a message and exit
+                echo "The directory was not specified ..."
+                exit 1
+fi
+# check if the directory specified is the current directory
+if [ "$DIR" == "$PWD" ]
+        then
+                # the directory specified is the current directory
+                # print a message and exit
+                echo "The directory specified is the current directory."
+                exit 1
+fi
+
+# check if the directory specified is . or ..
+if [[ "$DIR" == *.* ]] || [[ "$DIR" == *..* ]]
+        then
+                # the directory specified is . or ..
+                # print a message and exit
+                echo "The directory specified is . or .."
+                exit 1
+fi
+
+# check if neither -f nor -d were specified
+if [ ! "$WDIR" ] && [ ! "$WFILE" ]
+        then
+                # neither -f nor -d were specified
+                # print a message and exit
+                echo "Neither -f nor -d are specified ..."
+                exit 1
+fi
+
+# calls to fix_files and/or fix_dirs
+if [ "$WDIR" -a "$WFILE" ]
+    then
+        fix_files "$DIR"
+        fix_dirs "$DIR"
+elif [ "$WDIR" ]
+    then
+    fix_dirs "$DIR"
+elif [ "$WFILE" ]
+    then
+    fix_files "$DIR"
+    fi

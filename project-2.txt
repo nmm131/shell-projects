@@ -1,0 +1,31 @@
+#!/bin/bash
+
+set -- `echo $* | sed -e 's/^:/.:/' \
+
+-e 's/::/:.:/g' \
+
+-e 's/ :/ .:/g' \
+
+-e 's/: /:. /g' \
+
+-e 's/:$/:./' \
+
+-e 's/:/ /g'`
+
+NL=
+
+for L
+do
+case $NL in
+	"")
+		NL=$L
+		;;
+	$L|$L:*|*:$L:*|*:$L)
+		continue
+		;;
+	*)
+		NL="$NL:$L"
+		;;
+esac
+done
+echo $NL
